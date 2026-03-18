@@ -5,18 +5,20 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import GaritaSelector from '@/components/GaritaSelector';
 import TimerButton from '@/components/TimerButton';
 import SectionHeader from '@/components/SectionHeader';
 import CommunityPostCard from '@/components/CommunityPostCard';
-import { communityPosts } from '@/data/mockData';
+import { getBorderData } from '@/data/mockData';
 
 export default function CommunityScreen() {
   const [selectedGarita, setSelectedGarita] = useState('Mexicali Centro');
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [posts, setPosts] = useState(communityPosts);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let interval;
@@ -34,25 +36,63 @@ export default function CommunityScreen() {
     };
   }, [isTimerActive]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCommunityData() {
+      try {
+        const data = await getBorderData();
+        if (mounted) {
+          setPosts(data.communityPosts ?? []);
+        }
+      } catch (error) {
+        console.error('Error loading community data:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCommunityData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleTimerToggle = () => {
     if (isTimerActive) {
+      const crossingTime = Math.max(1, Math.floor(elapsedTime / 60));
+
       const newPost = {
         id: Date.now().toString(),
         garita: selectedGarita,
-        crossingTime: Math.floor(elapsedTime / 60),
+        crossingTime,
         timestamp: new Date(),
         timeAgo: 'Justo ahora',
         comment: 'Mi cruce recién completado',
       };
 
-      setPosts([newPost, ...posts]);
-
+      setPosts((prevPosts) => [newPost, ...prevPosts]);
       setElapsedTime(0);
       setIsTimerActive(false);
     } else {
+      setElapsedTime(0);
       setIsTimerActive(true);
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Cargando reportes...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -160,5 +200,16 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6b7280',
   },
 });

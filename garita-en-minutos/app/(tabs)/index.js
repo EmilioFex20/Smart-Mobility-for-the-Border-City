@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,26 +6,79 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import CrossingCard from '@/components/CrossingCard';
 import SectionHeader from '@/components/SectionHeader';
 import ForecastChart from '@/components/ForecastChart';
 import QuickSummaryCard from '@/components/QuickSummaryCard';
-import {
-  currentWaitTimes,
-  forecastData,
-  quickSummary,
-} from '@/data/mockData';
+import { getBorderData } from '@/data/mockData';
 
 export default function HomeScreen() {
   const [selectedGarita, setSelectedGarita] = useState('Mexicali Centro');
+  const [borderData, setBorderData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const data = await getBorderData();
+      setBorderData(data);
+    } catch (error) {
+      console.error('Error loading home data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const currentWaitTimes = borderData?.currentWaitTimes ?? [];
+  const forecastData = borderData?.forecastData ?? [];
+  const quickSummary = borderData?.quickSummary ?? {
+    bestTime: '--',
+    worstTime: '--',
+    avgToday: 0,
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Cargando tiempos de espera...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.appName}>Garita en Minutos</Text>
-          <Text style={styles.subtitle}>Tiempos de espera en Mexicali</Text>
+          <View>
+            <Text style={styles.appName}>Garita en Minutos</Text>
+            <Text style={styles.subtitle}>Tiempos de espera en Mexicali</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => loadData(true)}
+            activeOpacity={0.7}
+            disabled={refreshing}>
+            <Text style={styles.refreshButtonText}>
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -34,7 +87,7 @@ export default function HomeScreen() {
             subtitle="Actualizado en tiempo real"
           />
           {currentWaitTimes.map((waitTime, index) => (
-            <CrossingCard key={index} data={waitTime} />
+            <CrossingCard key={`${waitTime.garita}-${index}`} data={waitTime} />
           ))}
         </View>
 
@@ -110,6 +163,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   appName: {
     fontSize: 28,
@@ -158,5 +215,27 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6b7280',
+  },
+  refreshButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  refreshButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
