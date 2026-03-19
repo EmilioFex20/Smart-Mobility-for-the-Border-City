@@ -11,15 +11,16 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: '#e5e7eb',
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 68,
+          paddingBottom: 14,
+          paddingTop: 10,
+          height: 84,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{

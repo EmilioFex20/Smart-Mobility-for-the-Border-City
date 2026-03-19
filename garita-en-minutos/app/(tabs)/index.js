@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import CrossingCard from '@/components/CrossingCard';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SectionHeader from '@/components/SectionHeader';
 import ForecastChart from '@/components/ForecastChart';
 import QuickSummaryCard from '@/components/QuickSummaryCard';
@@ -52,7 +52,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2563eb" />
           <Text style={styles.loadingText}>Cargando tiempos de espera...</Text>
@@ -62,8 +62,12 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.appName}>Garita en Minutos</Text>
@@ -74,7 +78,8 @@ export default function HomeScreen() {
             style={styles.refreshButton}
             onPress={() => loadData(true)}
             activeOpacity={0.7}
-            disabled={refreshing}>
+            disabled={refreshing}
+          >
             <Text style={styles.refreshButtonText}>
               {refreshing ? 'Actualizando...' : 'Actualizar'}
             </Text>
@@ -106,12 +111,14 @@ export default function HomeScreen() {
                   selectedGarita === garita && styles.garitaButtonSelected,
                 ]}
                 onPress={() => setSelectedGarita(garita)}
-                activeOpacity={0.7}>
+                activeOpacity={0.7}
+              >
                 <Text
                   style={[
                     styles.garitaButtonText,
                     selectedGarita === garita && styles.garitaButtonTextSelected,
-                  ]}>
+                  ]}
+                >
                   {garita}
                 </Text>
               </TouchableOpacity>
@@ -155,6 +162,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   header: {
     paddingHorizontal: 20,

@@ -40,7 +40,7 @@ export interface BorderData {
   quickSummary: QuickSummary;
 }
 
-const API_URL = 'https://Orbit05-fila.hf.space/predict';
+const API_URL = 'https://orbit05-fila.hf.space/garita-vieja-caminando/predict';
 
 const GARITAS: GaritaName[] = ['Mexicali Centro', 'Mexicali Nueva'];
 
@@ -81,7 +81,11 @@ function getLastUpdatedLabel() {
   return 'Hace unos momentos';
 }
 
-async function fetchPrediction(mes: number, dia_num: number, hora: number): Promise<number> {
+async function fetchPrediction(
+  mes: number,
+  dia_num: number,
+  hora: number,
+): Promise<number> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -105,9 +109,11 @@ async function fetchPrediction(mes: number, dia_num: number, hora: number): Prom
 async function fetchAveragePrediction(
   mes: number,
   dia_num: number,
-  hours: number[]
+  hours: number[],
 ): Promise<number> {
-  const values = await Promise.all(hours.map((hour) => fetchPrediction(mes, dia_num, hour)));
+  const values = await Promise.all(
+    hours.map((hour) => fetchPrediction(mes, dia_num, hour)),
+  );
   const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
   return roundPrediction(avg);
 }
@@ -140,8 +146,20 @@ async function buildForecastData(): Promise<ForecastData[]> {
   const tomorrowInfo = getDateInfo(new Date(), 1);
 
   const [todayValues, tomorrowValues] = await Promise.all([
-    Promise.all(periods.map((period) => fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours))),
-    Promise.all(periods.map((period) => fetchAveragePrediction(tomorrowInfo.mes, tomorrowInfo.dia_num, period.hours))),
+    Promise.all(
+      periods.map((period) =>
+        fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours),
+      ),
+    ),
+    Promise.all(
+      periods.map((period) =>
+        fetchAveragePrediction(
+          tomorrowInfo.mes,
+          tomorrowInfo.dia_num,
+          period.hours,
+        ),
+      ),
+    ),
   ]);
 
   const result: ForecastData[] = [];
@@ -182,8 +200,8 @@ async function buildQuickSummary(): Promise<QuickSummary> {
 
   const values = await Promise.all(
     summaryPeriods.map((period) =>
-      fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours)
-    )
+      fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours),
+    ),
   );
 
   let bestIndex = 0;
@@ -197,7 +215,9 @@ async function buildQuickSummary(): Promise<QuickSummary> {
   return {
     bestTime: summaryPeriods[bestIndex].label,
     worstTime: summaryPeriods[worstIndex].label,
-    avgToday: roundPrediction(values.reduce((a, b) => a + b, 0) / values.length),
+    avgToday: roundPrediction(
+      values.reduce((a, b) => a + b, 0) / values.length,
+    ),
   };
 }
 

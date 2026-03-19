@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import GaritaSelector from '@/components/GaritaSelector';
 import TimerButton from '@/components/TimerButton';
 import SectionHeader from '@/components/SectionHeader';
