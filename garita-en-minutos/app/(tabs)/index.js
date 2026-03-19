@@ -116,7 +116,8 @@ export default function HomeScreen() {
                 <Text
                   style={[
                     styles.garitaButtonText,
-                    selectedGarita === garita && styles.garitaButtonTextSelected,
+                    selectedGarita === garita &&
+                      styles.garitaButtonTextSelected,
                   ]}
                 >
                   {garita}

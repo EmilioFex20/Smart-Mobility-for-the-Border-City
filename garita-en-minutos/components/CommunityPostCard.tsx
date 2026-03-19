@@ -13,7 +13,7 @@ export default function CommunityPostCard({ post }: CommunityPostCardProps) {
     typeof post?.crossingTime === 'number' && !Number.isNaN(post.crossingTime)
       ? post.crossingTime
       : 0;
-  const safeComment = post?.comment?.trim();
+  const safeComment = post?.trafficLevel;
 
   return (
     <View style={styles.card}>
@@ -30,9 +30,7 @@ export default function CommunityPostCard({ post }: CommunityPostCardProps) {
         <Text style={styles.crossingTime}>{safeCrossingTime} min</Text>
       </View>
 
-      {safeComment ? (
-        <Text style={styles.comment}>"{safeComment}"</Text>
-      ) : null}
+      {safeComment ? <Text style={styles.comment}>"{safeComment}"</Text> : null}
     </View>
   );
 }

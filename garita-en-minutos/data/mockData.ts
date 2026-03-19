@@ -24,7 +24,7 @@ export interface CommunityPost {
   crossingTime: number;
   timestamp: Date;
   timeAgo: string;
-  comment?: string;
+  trafficLevel?: string;
 }
 
 export interface QuickSummary {
@@ -230,7 +230,7 @@ function buildMockCommunityPosts(): CommunityPost[] {
       garita: 'Mexicali Centro',
       crossingTime: 22,
       timestamp: new Date(now - 10 * 60 * 1000),
-      comment: 'Muy rápido hoy, sin problemas',
+      trafficLevel: 'Rapido',
     },
     {
       id: '2',
@@ -243,14 +243,14 @@ function buildMockCommunityPosts(): CommunityPost[] {
       garita: 'Mexicali Centro',
       crossingTime: 18,
       timestamp: new Date(now - 35 * 60 * 1000),
-      comment: 'Excelente tiempo',
+      trafficLevel: 'Normal',
     },
     {
       id: '4',
       garita: 'Mexicali Nueva',
       crossingTime: 52,
       timestamp: new Date(now - 45 * 60 * 1000),
-      comment: 'Un poco lento pero fluye bien',
+      trafficLevel: 'Lento',
     },
   ];
 
