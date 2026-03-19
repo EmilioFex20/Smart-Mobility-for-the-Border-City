@@ -12,6 +12,10 @@ export default function QuickSummaryCard({
   title,
   value,
 }: QuickSummaryCardProps) {
+  const safeIcon = ['best', 'worst', 'avg'].includes(icon) ? icon : 'avg';
+  const safeTitle = title ?? '';
+  const safeValue = value ?? '--';
+
   const iconComponents = {
     best: <TrendingDown size={24} color="#10b981" />,
     worst: <TrendingUp size={24} color="#ef4444" />,
@@ -26,11 +30,15 @@ export default function QuickSummaryCard({
 
   return (
     <View style={styles.card}>
-      <View style={[styles.iconContainer, { backgroundColor: iconBgColors[icon] }]}>
-        {iconComponents[icon]}
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: iconBgColors[safeIcon] },
+        ]}>
+        {iconComponents[safeIcon]}
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.title}>{safeTitle}</Text>
+      <Text style={styles.value}>{safeValue}</Text>
     </View>
   );
 }
@@ -47,6 +55,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+    minHeight: 140,
   },
   iconContainer: {
     width: 48,

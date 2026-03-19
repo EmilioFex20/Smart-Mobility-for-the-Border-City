@@ -12,6 +12,10 @@ export default function GaritaSelector({
   selectedGarita,
   onSelect,
 }: GaritaSelectorProps) {
+  const safeSelectedGarita = garitas.includes(selectedGarita)
+    ? selectedGarita
+    : 'Mexicali Centro';
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Selecciona la garita</Text>
@@ -21,14 +25,14 @@ export default function GaritaSelector({
             key={garita}
             style={[
               styles.button,
-              selectedGarita === garita && styles.buttonSelected,
+              safeSelectedGarita === garita && styles.buttonSelected,
             ]}
             onPress={() => onSelect(garita)}
             activeOpacity={0.7}>
             <Text
               style={[
                 styles.buttonText,
-                selectedGarita === garita && styles.buttonTextSelected,
+                safeSelectedGarita === garita && styles.buttonTextSelected,
               ]}>
               {garita}
             </Text>
