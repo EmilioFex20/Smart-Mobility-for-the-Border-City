@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import QuickSummaryCard from '@/components/QuickSummaryCard';
 import { getBorderData } from '@/data/mockData';
 
 export default function HomeScreen() {
-  const [selectedGarita, setSelectedGarita] = useState('Mexicali Centro');
+  const [selectedCrossingId, setSelectedCrossingId] = useState('');
   const [borderData, setBorderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,6 +50,39 @@ export default function HomeScreen() {
     avgToday: 0,
   };
 
+  const forecastOptions = useMemo(() => {
+    if (currentWaitTimes.length) {
+      return currentWaitTimes.map((item) => ({
+        id: item.id,
+        label: item.displayName ?? item.garita,
+      }));
+    }
+
+    const seen = new Set();
+    return forecastData
+      .filter((item) => {
+        if (!item?.id || seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .map((item) => ({
+        id: item.id,
+        label: item.displayName ?? item.garita,
+      }));
+  }, [currentWaitTimes, forecastData]);
+
+  useEffect(() => {
+    if (!forecastOptions.length) return;
+
+    const selectedStillExists = forecastOptions.some(
+      (option) => option.id === selectedCrossingId
+    );
+
+    if (!selectedCrossingId || !selectedStillExists) {
+      setSelectedCrossingId(forecastOptions[0].id);
+    }
+  }, [forecastOptions, selectedCrossingId]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -66,8 +99,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
             <Text style={styles.appName}>Garita en Minutos</Text>
@@ -78,8 +110,7 @@ export default function HomeScreen() {
             style={styles.refreshButton}
             onPress={() => loadData(true)}
             activeOpacity={0.7}
-            disabled={refreshing}
-          >
+            disabled={refreshing}>
             <Text style={styles.refreshButtonText}>
               {refreshing ? 'Actualizando...' : 'Actualizar'}
             </Text>
@@ -91,8 +122,8 @@ export default function HomeScreen() {
             title="Tiempos actuales"
             subtitle="Actualizado en tiempo real"
           />
-          {currentWaitTimes.map((waitTime, index) => (
-            <CrossingCard key={`${waitTime.garita}-${index}`} data={waitTime} />
+          {currentWaitTimes.map((waitTime) => (
+            <CrossingCard key={waitTime.id ?? waitTime.displayName} data={waitTime} />
           ))}
         </View>
 
@@ -103,30 +134,31 @@ export default function HomeScreen() {
           />
 
           <View style={styles.garitaSelectorContainer}>
-            {['Mexicali Centro', 'Mexicali Nueva'].map((garita) => (
+            {forecastOptions.map((option) => (
               <TouchableOpacity
-                key={garita}
+                key={option.id}
                 style={[
                   styles.garitaButton,
-                  selectedGarita === garita && styles.garitaButtonSelected,
+                  selectedCrossingId === option.id && styles.garitaButtonSelected,
                 ]}
-                onPress={() => setSelectedGarita(garita)}
-                activeOpacity={0.7}
-              >
+                onPress={() => setSelectedCrossingId(option.id)}
+                activeOpacity={0.7}>
                 <Text
                   style={[
                     styles.garitaButtonText,
-                    selectedGarita === garita &&
+                    selectedCrossingId === option.id &&
                       styles.garitaButtonTextSelected,
-                  ]}
-                >
-                  {garita}
+                  ]}>
+                  {option.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <ForecastChart data={forecastData} selectedGarita={selectedGarita} />
+          <ForecastChart
+            data={forecastData}
+            selectedCrossingId={selectedCrossingId}
+          />
         </View>
 
         <View style={styles.section}>
@@ -194,12 +226,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   garitaSelectorContainer: {
-    flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
   },
   garitaButton: {
-    flex: 1,
     backgroundColor: '#f3f4f6',
     paddingVertical: 12,
     paddingHorizontal: 16,

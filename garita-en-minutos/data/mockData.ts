@@ -1,16 +1,31 @@
 export type GaritaName = 'Mexicali Centro' | 'Mexicali Nueva';
+export type CrossingType = 'carro' | 'caminando';
 
 export type WaitStatus = 'rápido' | 'moderado' | 'lento';
 
-export interface CurrentWaitTime {
+export interface CrossingConfig {
+  id: string;
   garita: GaritaName;
+  crossingType: CrossingType;
+  displayName: string;
+  apiUrl: string;
+}
+
+export interface CurrentWaitTime {
+  id: string;
+  garita: GaritaName;
+  crossingType: CrossingType;
+  displayName: string;
   waitTime: number;
   status: WaitStatus;
   lastUpdated: string;
 }
 
 export interface ForecastData {
+  id: string;
   garita: GaritaName;
+  crossingType: CrossingType;
+  displayName: string;
   dayLabel: string;
   periods: {
     label: string;
@@ -24,7 +39,7 @@ export interface CommunityPost {
   crossingTime: number;
   timestamp: Date;
   timeAgo: string;
-  trafficLevel?: string;
+  comment?: string;
 }
 
 export interface QuickSummary {
@@ -40,9 +55,33 @@ export interface BorderData {
   quickSummary: QuickSummary;
 }
 
-const API_URL = 'https://orbit05-fila.hf.space/garita-vieja-caminando/predict';
-
-const GARITAS: GaritaName[] = ['Mexicali Centro', 'Mexicali Nueva'];
+/**
+ * Aquí controlas TODOS los cruces visibles en la app.
+ * Si luego agregas otro, solo agregas otro objeto aquí.
+ */
+const CROSSINGS: CrossingConfig[] = [
+  {
+    id: 'centro-carro',
+    garita: 'Mexicali Centro',
+    crossingType: 'carro',
+    displayName: 'Mexicali Centro - Carro',
+    apiUrl: 'https://Orbit05-fila.hf.space/garita-vieja/predict',
+  },
+  {
+    id: 'nueva-carro',
+    garita: 'Mexicali Nueva',
+    crossingType: 'carro',
+    displayName: 'Mexicali Nueva - Carro',
+    apiUrl: 'https://Orbit05-fila.hf.space/garita-nueva/predict',
+  },
+  {
+    id: 'centro-caminando',
+    garita: 'Mexicali Centro',
+    crossingType: 'caminando',
+    displayName: 'Mexicali Centro - Caminando',
+    apiUrl: 'https://Orbit05-fila.hf.space/garita-vieja-caminando/predict',
+  },
+];
 
 function getStatus(waitTime: number): WaitStatus {
   if (waitTime <= 30) return 'rápido';
@@ -61,7 +100,7 @@ function getDateInfo(baseDate = new Date(), dayOffset = 0) {
   return {
     date,
     mes: date.getMonth() + 1,
-    dia_num: date.getDay(), // 0=domingo, 1=lunes, etc.
+    dia_num: date.getDay() === 0 ? 7 : date.getDay(),
   };
 }
 
@@ -82,11 +121,12 @@ function getLastUpdatedLabel() {
 }
 
 async function fetchPrediction(
+  apiUrl: string,
   mes: number,
   dia_num: number,
-  hora: number,
+  hora: number
 ): Promise<number> {
-  const response = await fetch(API_URL, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -99,7 +139,7 @@ async function fetchPrediction(
   });
 
   if (!response.ok) {
-    throw new Error(`Error API: ${response.status}`);
+    throw new Error(`Error API ${apiUrl}: ${response.status}`);
   }
 
   const data = await response.json();
@@ -107,13 +147,15 @@ async function fetchPrediction(
 }
 
 async function fetchAveragePrediction(
+  apiUrl: string,
   mes: number,
   dia_num: number,
-  hours: number[],
+  hours: number[]
 ): Promise<number> {
   const values = await Promise.all(
-    hours.map((hour) => fetchPrediction(mes, dia_num, hour)),
+    hours.map((hour) => fetchPrediction(apiUrl, mes, dia_num, hour))
   );
+
   const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
   return roundPrediction(avg);
 }
@@ -123,14 +165,26 @@ async function buildCurrentWaitTimes(): Promise<CurrentWaitTime[]> {
   const currentHour = now.getHours();
   const { mes, dia_num } = getDateInfo(now, 0);
 
-  const prediction = await fetchPrediction(mes, dia_num, currentHour);
+  return Promise.all(
+    CROSSINGS.map(async (crossing) => {
+      const prediction = await fetchPrediction(
+        crossing.apiUrl,
+        mes,
+        dia_num,
+        currentHour
+      );
 
-  return GARITAS.map((garita) => ({
-    garita,
-    waitTime: prediction,
-    status: getStatus(prediction),
-    lastUpdated: getLastUpdatedLabel(),
-  }));
+      return {
+        id: crossing.id,
+        garita: crossing.garita,
+        crossingType: crossing.crossingType,
+        displayName: crossing.displayName,
+        waitTime: prediction,
+        status: getStatus(prediction),
+        lastUpdated: getLastUpdatedLabel(),
+      };
+    })
+  );
 }
 
 async function buildForecastData(): Promise<ForecastData[]> {
@@ -145,28 +199,37 @@ async function buildForecastData(): Promise<ForecastData[]> {
   const todayInfo = getDateInfo(new Date(), 0);
   const tomorrowInfo = getDateInfo(new Date(), 1);
 
-  const [todayValues, tomorrowValues] = await Promise.all([
-    Promise.all(
-      periods.map((period) =>
-        fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours),
-      ),
-    ),
-    Promise.all(
-      periods.map((period) =>
-        fetchAveragePrediction(
-          tomorrowInfo.mes,
-          tomorrowInfo.dia_num,
-          period.hours,
-        ),
-      ),
-    ),
-  ]);
-
   const result: ForecastData[] = [];
 
-  for (const garita of GARITAS) {
+  for (const crossing of CROSSINGS) {
+    const [todayValues, tomorrowValues] = await Promise.all([
+      Promise.all(
+        periods.map((period) =>
+          fetchAveragePrediction(
+            crossing.apiUrl,
+            todayInfo.mes,
+            todayInfo.dia_num,
+            period.hours
+          )
+        )
+      ),
+      Promise.all(
+        periods.map((period) =>
+          fetchAveragePrediction(
+            crossing.apiUrl,
+            tomorrowInfo.mes,
+            tomorrowInfo.dia_num,
+            period.hours
+          )
+        )
+      ),
+    ]);
+
     result.push({
-      garita,
+      id: crossing.id,
+      garita: crossing.garita,
+      crossingType: crossing.crossingType,
+      displayName: crossing.displayName,
       dayLabel: 'Hoy',
       periods: periods.map((period, index) => ({
         label: period.label,
@@ -175,7 +238,10 @@ async function buildForecastData(): Promise<ForecastData[]> {
     });
 
     result.push({
-      garita,
+      id: crossing.id,
+      garita: crossing.garita,
+      crossingType: crossing.crossingType,
+      displayName: crossing.displayName,
       dayLabel: 'Mañana',
       periods: periods.map((period, index) => ({
         label: period.label,
@@ -187,6 +253,9 @@ async function buildForecastData(): Promise<ForecastData[]> {
   return result;
 }
 
+/**
+ * Resumen general combinando todos los cruces visibles.
+ */
 async function buildQuickSummary(): Promise<QuickSummary> {
   const todayInfo = getDateInfo(new Date(), 0);
 
@@ -199,9 +268,22 @@ async function buildQuickSummary(): Promise<QuickSummary> {
   ];
 
   const values = await Promise.all(
-    summaryPeriods.map((period) =>
-      fetchAveragePrediction(todayInfo.mes, todayInfo.dia_num, period.hours),
-    ),
+    summaryPeriods.map(async (period) => {
+      const perCrossing = await Promise.all(
+        CROSSINGS.map((crossing) =>
+          fetchAveragePrediction(
+            crossing.apiUrl,
+            todayInfo.mes,
+            todayInfo.dia_num,
+            period.hours
+          )
+        )
+      );
+
+      return roundPrediction(
+        perCrossing.reduce((sum, value) => sum + value, 0) / perCrossing.length
+      );
+    })
   );
 
   let bestIndex = 0;
@@ -216,7 +298,7 @@ async function buildQuickSummary(): Promise<QuickSummary> {
     bestTime: summaryPeriods[bestIndex].label,
     worstTime: summaryPeriods[worstIndex].label,
     avgToday: roundPrediction(
-      values.reduce((a, b) => a + b, 0) / values.length,
+      values.reduce((a, b) => a + b, 0) / values.length
     ),
   };
 }
@@ -230,7 +312,7 @@ function buildMockCommunityPosts(): CommunityPost[] {
       garita: 'Mexicali Centro',
       crossingTime: 22,
       timestamp: new Date(now - 10 * 60 * 1000),
-      trafficLevel: 'Rapido',
+      comment: 'Muy rápido hoy, sin problemas',
     },
     {
       id: '2',
@@ -243,14 +325,14 @@ function buildMockCommunityPosts(): CommunityPost[] {
       garita: 'Mexicali Centro',
       crossingTime: 18,
       timestamp: new Date(now - 35 * 60 * 1000),
-      trafficLevel: 'Normal',
+      comment: 'Excelente tiempo',
     },
     {
       id: '4',
       garita: 'Mexicali Nueva',
       crossingTime: 52,
       timestamp: new Date(now - 45 * 60 * 1000),
-      trafficLevel: 'Lento',
+      comment: 'Un poco lento pero fluye bien',
     },
   ];
 
@@ -263,14 +345,29 @@ function buildMockCommunityPosts(): CommunityPost[] {
 const fallbackData: BorderData = {
   currentWaitTimes: [
     {
+      id: 'centro-carro',
       garita: 'Mexicali Centro',
+      crossingType: 'carro',
+      displayName: 'Mexicali Centro - Carro',
       waitTime: 25,
       status: 'rápido',
       lastUpdated: 'Hace 5 min',
     },
     {
+      id: 'nueva-carro',
       garita: 'Mexicali Nueva',
+      crossingType: 'carro',
+      displayName: 'Mexicali Nueva - Carro',
       waitTime: 25,
+      status: 'rápido',
+      lastUpdated: 'Hace 5 min',
+    },
+    {
+      id: 'centro-caminando',
+      garita: 'Mexicali Centro',
+      crossingType: 'caminando',
+      displayName: 'Mexicali Centro - Caminando',
+      waitTime: 18,
       status: 'rápido',
       lastUpdated: 'Hace 5 min',
     },

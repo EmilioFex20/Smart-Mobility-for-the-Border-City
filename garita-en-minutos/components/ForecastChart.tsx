@@ -3,21 +3,24 @@ import type { ForecastData } from '@/data/mockData';
 
 interface ForecastChartProps {
   data: ForecastData[];
-  selectedGarita: string;
+  selectedCrossingId: string;
 }
 
 export default function ForecastChart({
   data,
-  selectedGarita,
+  selectedCrossingId,
 }: ForecastChartProps) {
-  const filteredData = data.filter((d) => d.garita === selectedGarita);
+  const filteredData = data.filter((d) => d.id === selectedCrossingId);
+
+  const selectedDisplayName =
+    filteredData[0]?.displayName ?? 'este cruce';
 
   if (!filteredData.length) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyTitle}>Sin datos de pronóstico</Text>
         <Text style={styles.emptyText}>
-          No hay información disponible para {selectedGarita} en este momento.
+          No hay información disponible para {selectedDisplayName} en este momento.
         </Text>
       </View>
     );
@@ -34,14 +37,14 @@ export default function ForecastChart({
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.chartWrapper}>
           {filteredData.map((dayData, dayIndex) => (
-            <View key={dayIndex} style={styles.daySection}>
+            <View key={`${dayData.id}-${dayData.dayLabel}-${dayIndex}`} style={styles.daySection}>
               <Text style={styles.dayLabel}>{dayData.dayLabel}</Text>
               <View style={styles.barsContainer}>
                 {dayData.periods.map((period, index) => {
                   const barHeight = (period.avgWaitTime / maxWaitTime) * 120;
 
                   return (
-                    <View key={index} style={styles.barWrapper}>
+                    <View key={`${period.label}-${index}`} style={styles.barWrapper}>
                       <View style={styles.barContainer}>
                         <Text style={styles.timeValue}>
                           {period.avgWaitTime}m

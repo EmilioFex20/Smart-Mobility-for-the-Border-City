@@ -13,7 +13,7 @@ export default function CommunityPostCard({ post }: CommunityPostCardProps) {
     typeof post?.crossingTime === 'number' && !Number.isNaN(post.crossingTime)
       ? post.crossingTime
       : 0;
-  const safeComment = post?.trafficLevel;
+  const safeComment = post?.comment?.trim();
 
   return (
     <View style={styles.card}>

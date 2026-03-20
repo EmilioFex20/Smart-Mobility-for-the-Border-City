@@ -23,6 +23,7 @@ export default function CrossingCard({ data }: CrossingCardProps) {
     data?.status && statusColors[data.status] ? data.status : 'moderado';
 
   const safeGarita = data?.garita ?? 'Garita';
+  const safeDisplayName = data?.displayName ?? safeGarita;
   const safeWaitTime =
     typeof data?.waitTime === 'number' && !Number.isNaN(data.waitTime)
       ? data.waitTime
@@ -32,7 +33,7 @@ export default function CrossingCard({ data }: CrossingCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.garitaName}>{safeGarita}</Text>
+        <Text style={styles.garitaName}>{safeDisplayName}</Text>
         <View
           style={[
             styles.statusBadge,

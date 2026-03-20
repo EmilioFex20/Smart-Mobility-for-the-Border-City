@@ -64,7 +64,6 @@ const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
 export default function CommunityScreen() {
   const [selectedGarita, setSelectedGarita] = useState('Mexicali Centro');
   const [isTimerActive, setIsTimerActive] = useState(false);
-  //tiempos
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
 
@@ -146,6 +145,29 @@ export default function CommunityScreen() {
     };
   }, []);
 
+  const clearTimerStorage = async () => {
+    await AsyncStorage.multiRemove([
+      'timer_active',
+      'timer_started_at',
+      'timer_garita',
+    ]);
+  };
+
+  const resetPostFlowState = () => {
+    setElapsedTime(0);
+    setStartedAt(null);
+    setSelectedSpeed(null);
+    setCommentModalVisible(false);
+    setDistanceToCalexico(null);
+    setCrossingVerified(false);
+    setTimerVerification({
+      verified: false,
+      reason: null,
+      distance: null,
+      coords: null,
+    });
+  };
+
   const startAutoStopTracking = async () => {
     try {
       const sub = await Location.watchPositionAsync(
@@ -164,16 +186,13 @@ export default function CommunityScreen() {
             CALEXICO_ZONE.longitude,
           );
           setDistanceToCalexico(distanceToCalexico);
-          // Logs para validar
-          /*console.log('WATCH user coords:', coords.latitude, coords.longitude);
-          console.log('WATCH distance to Calexico:', distanceToCalexico);
-          console.log('WATCH zone radius:', CALEXICO_ZONE.radiusMeters);*/
 
           if (distanceToCalexico <= CALEXICO_ZONE.radiusMeters) {
             sub.remove();
             setLocationSubscription(null);
             setIsTimerActive(false);
             setCrossingVerified(true);
+            await clearTimerStorage();
 
             Alert.alert(
               'Cruce detectado',
@@ -248,16 +267,6 @@ export default function CommunityScreen() {
 
       const allowedRadius = baseRadius + gpsAccuracy;
 
-      // Logs para verificar la funcionalidad de la ubicacion
-      /*console.log('selectedGarita:', selectedGarita);
-      console.log('userLat/userLon:', userLat, userLon);
-      console.log('garitaLat/garitaLon:', garitaLat, garitaLon);
-      console.log('distance:', distance);
-      console.log('baseRadius:', baseRadius, typeof baseRadius);
-      console.log('gpsAccuracy:', gpsAccuracy);
-      console.log('allowedRadius:', allowedRadius);
-      console.log('verified?:', distance <= allowedRadius);*/
-
       if (
         [
           userLat,
@@ -299,11 +308,13 @@ export default function CommunityScreen() {
       setStartedAt(now);
       setElapsedTime(0);
       setIsTimerActive(true);
+
       await AsyncStorage.multiSet([
         ['timer_active', 'true'],
         ['timer_started_at', String(now)],
         ['timer_garita', selectedGarita],
       ]);
+
       startAutoStopTracking();
       return;
     }
@@ -322,13 +333,34 @@ export default function CommunityScreen() {
     );
   };
 
-  const clearTimerStorage = async () => {
-    await AsyncStorage.multiRemove([
-      'timer_active',
-      'timer_started_at',
-      'timer_garita',
-    ]);
+  const stopTimerWithoutPost = async () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+    }
+
+    setIsTimerActive(false);
+    await clearTimerStorage();
+    resetPostFlowState();
   };
+
+  const stopTimerAndOpenPost = async () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+    }
+
+    setIsTimerActive(false);
+    await clearTimerStorage();
+    setCommentModalVisible(true);
+  };
+
+  const cancelPostModal = () => {
+    setSelectedSpeed(null);
+    setCommentModalVisible(false);
+    resetPostFlowState();
+  };
+
   const askToFinishTimer = () => {
     if (!crossingVerified) {
       Alert.alert('Terminar cronómetro', '¿Quieres terminar este cruce?', [
@@ -357,34 +389,8 @@ export default function CommunityScreen() {
         },
       ]);
     }
-    clearTimerStorage();
-  };
-  const stopTimerWithoutPost = () => {
-    if (locationSubscription) {
-      locationSubscription.remove();
-      setLocationSubscription(null);
-    }
-
-    setIsTimerActive(false);
-    setElapsedTime(0);
-    setDistanceToCalexico(null);
-    setTimerVerification({
-      verified: false,
-      reason: null,
-      distance: null,
-      coords: null,
-    });
   };
 
-  const stopTimerAndOpenPost = () => {
-    if (locationSubscription) {
-      locationSubscription.remove();
-      setLocationSubscription(null);
-    }
-
-    setIsTimerActive(false);
-    setCommentModalVisible(true);
-  };
   const handleTimerToggle = () => {
     if (isTimerActive) {
       askToFinishTimer();
@@ -401,6 +407,7 @@ export default function CommunityScreen() {
       );
       return;
     }
+
     if (!selectedSpeed) {
       Alert.alert(
         'Selecciona una opción',
@@ -420,24 +427,15 @@ export default function CommunityScreen() {
         crossingTime,
         timestamp: new Date(),
         timeAgo: 'Justo ahora',
-        trafficLevel: selectedSpeed,
+        comment: selectedSpeed,
         verified: true,
         distance: timerVerification.distance ?? null,
         verificationReason: null,
       };
 
       setPosts((prevPosts) => [newPost, ...prevPosts]);
-      setSelectedSpeed(null);
-      setCommentModalVisible(false);
-      setElapsedTime(0);
-      setDistanceToCalexico(null);
-      setCrossingVerified(false);
-      setTimerVerification({
-        verified: false,
-        reason: null,
-        distance: null,
-        coords: null,
-      });
+      await clearTimerStorage();
+      resetPostFlowState();
     } catch (error) {
       console.error('Error creating post:', error);
       Alert.alert('Error', 'No se pudo publicar el reporte.');
@@ -498,8 +496,7 @@ export default function CommunityScreen() {
 
               {distanceToCalexico !== null && (
                 <Text style={styles.debugDistanceText}>
-                  Distancia a zona de llegada: {Math.round(distanceToCalexico)}{' '}
-                  m
+                  Distancia a zona de llegada: {Math.round(distanceToCalexico)} m
                 </Text>
               )}
             </View>
@@ -523,8 +520,7 @@ export default function CommunityScreen() {
         visible={commentModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setCommentModalVisible(false)}
-      >
+        onRequestClose={cancelPostModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>¿Cómo estuvo tu cruce?</Text>
@@ -543,14 +539,12 @@ export default function CommunityScreen() {
                     selected && styles.optionButtonSelected,
                   ]}
                   onPress={() => setSelectedSpeed(option)}
-                  activeOpacity={0.8}
-                >
+                  activeOpacity={0.8}>
                   <View
                     style={[
                       styles.radioOuter,
                       selected && styles.radioOuterSelected,
-                    ]}
-                  >
+                    ]}>
                     {selected && <View style={styles.radioInner} />}
                   </View>
 
@@ -558,8 +552,7 @@ export default function CommunityScreen() {
                     style={[
                       styles.optionText,
                       selected && styles.optionTextSelected,
-                    ]}
-                  >
+                    ]}>
                     {option}
                   </Text>
                 </TouchableOpacity>
@@ -569,20 +562,15 @@ export default function CommunityScreen() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setSelectedSpeed(null);
-                  setCommentModalVisible(false);
-                }}
-                disabled={finishingPost}
-              >
+                onPress={cancelPostModal}
+                disabled={finishingPost}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.modalButton, styles.publishButton]}
                 onPress={finishAndCreatePost}
-                disabled={finishingPost}
-              >
+                disabled={finishingPost}>
                 <Text style={styles.publishButtonText}>
                   {finishingPost ? 'Publicando...' : 'Publicar'}
                 </Text>
@@ -700,22 +688,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     marginBottom: 12,
   },
-
   optionButtonSelected: {
     borderColor: '#2563eb',
     backgroundColor: '#eff6ff',
   },
-
   optionText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#111827',
   },
-
   optionTextSelected: {
     color: '#2563eb',
   },
-
   radioOuter: {
     width: 22,
     height: 22,
@@ -726,11 +710,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-
   radioOuterSelected: {
     borderColor: '#2563eb',
   },
-
   radioInner: {
     width: 10,
     height: 10,
