@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Menu, Users } from 'lucide-react-native';
+import { Menu, Users, TrendingUp } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -33,6 +33,13 @@ export default function TabLayout() {
         options={{
           title: 'Comunidad',
           tabBarIcon: ({ size, color }) => <Users size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="prediccion"
+        options={{
+          title: 'Predicción',
+          tabBarIcon: ({ size, color }) => <TrendingUp size={size} color={color} />,
         }}
       />
     </Tabs>
