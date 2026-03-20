@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Hop as Home, Users } from 'lucide-react-native';
+import { Menu, Users, TrendingUp } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -11,20 +11,21 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: '#e5e7eb',
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 68,
+          paddingBottom: 14,
+          paddingTop: 10,
+          height: 84,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => <Menu size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -32,6 +33,13 @@ export default function TabLayout() {
         options={{
           title: 'Comunidad',
           tabBarIcon: ({ size, color }) => <Users size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="prediccion"
+        options={{
+          title: 'Predicción',
+          tabBarIcon: ({ size, color }) => <TrendingUp size={size} color={color} />,
         }}
       />
     </Tabs>

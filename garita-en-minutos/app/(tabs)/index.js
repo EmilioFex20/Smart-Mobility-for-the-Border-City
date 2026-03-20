@@ -1,31 +1,120 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import CrossingCard from '@/components/CrossingCard';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SectionHeader from '@/components/SectionHeader';
 import ForecastChart from '@/components/ForecastChart';
 import QuickSummaryCard from '@/components/QuickSummaryCard';
-import {
-  currentWaitTimes,
-  forecastData,
-  quickSummary,
-} from '@/data/mockData';
+import { getBorderData } from '@/data/mockData';
 
 export default function HomeScreen() {
-  const [selectedGarita, setSelectedGarita] = useState('Mexicali Centro');
+  const [selectedCrossingId, setSelectedCrossingId] = useState('');
+  const [borderData, setBorderData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const data = await getBorderData();
+      setBorderData(data);
+    } catch (error) {
+      console.error('Error loading home data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const currentWaitTimes = borderData?.currentWaitTimes ?? [];
+  const forecastData = borderData?.forecastData ?? [];
+  const quickSummary = borderData?.quickSummary ?? {
+    bestTime: '--',
+    worstTime: '--',
+    avgToday: 0,
+  };
+
+  const forecastOptions = useMemo(() => {
+    if (currentWaitTimes.length) {
+      return currentWaitTimes.map((item) => ({
+        id: item.id,
+        label: item.displayName ?? item.garita,
+      }));
+    }
+
+    const seen = new Set();
+    return forecastData
+      .filter((item) => {
+        if (!item?.id || seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .map((item) => ({
+        id: item.id,
+        label: item.displayName ?? item.garita,
+      }));
+  }, [currentWaitTimes, forecastData]);
+
+  useEffect(() => {
+    if (!forecastOptions.length) return;
+
+    const selectedStillExists = forecastOptions.some(
+      (option) => option.id === selectedCrossingId
+    );
+
+    if (!selectedCrossingId || !selectedStillExists) {
+      setSelectedCrossingId(forecastOptions[0].id);
+    }
+  }, [forecastOptions, selectedCrossingId]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Cargando tiempos de espera...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.appName}>Garita en Minutos</Text>
-          <Text style={styles.subtitle}>Tiempos de espera en Mexicali</Text>
+          <View>
+            <Text style={styles.appName}>Garita en Minutos</Text>
+            <Text style={styles.subtitle}>Tiempos de espera en Mexicali</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => loadData(true)}
+            activeOpacity={0.7}
+            disabled={refreshing}>
+            <Text style={styles.refreshButtonText}>
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -33,8 +122,8 @@ export default function HomeScreen() {
             title="Tiempos actuales"
             subtitle="Actualizado en tiempo real"
           />
-          {currentWaitTimes.map((waitTime, index) => (
-            <CrossingCard key={index} data={waitTime} />
+          {currentWaitTimes.map((waitTime) => (
+            <CrossingCard key={waitTime.id ?? waitTime.displayName} data={waitTime} />
           ))}
         </View>
 
@@ -45,27 +134,31 @@ export default function HomeScreen() {
           />
 
           <View style={styles.garitaSelectorContainer}>
-            {['Mexicali Centro', 'Mexicali Nueva'].map((garita) => (
+            {forecastOptions.map((option) => (
               <TouchableOpacity
-                key={garita}
+                key={option.id}
                 style={[
                   styles.garitaButton,
-                  selectedGarita === garita && styles.garitaButtonSelected,
+                  selectedCrossingId === option.id && styles.garitaButtonSelected,
                 ]}
-                onPress={() => setSelectedGarita(garita)}
+                onPress={() => setSelectedCrossingId(option.id)}
                 activeOpacity={0.7}>
                 <Text
                   style={[
                     styles.garitaButtonText,
-                    selectedGarita === garita && styles.garitaButtonTextSelected,
+                    selectedCrossingId === option.id &&
+                      styles.garitaButtonTextSelected,
                   ]}>
-                  {garita}
+                  {option.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <ForecastChart data={forecastData} selectedGarita={selectedGarita} />
+          <ForecastChart
+            data={forecastData}
+            selectedCrossingId={selectedCrossingId}
+          />
         </View>
 
         <View style={styles.section}>
@@ -103,6 +196,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -110,6 +206,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
   appName: {
     fontSize: 28,
@@ -126,12 +226,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   garitaSelectorContainer: {
-    flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
   },
   garitaButton: {
-    flex: 1,
     backgroundColor: '#f3f4f6',
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -158,5 +256,27 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6b7280',
+  },
+  refreshButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  refreshButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

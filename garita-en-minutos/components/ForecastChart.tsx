@@ -3,33 +3,52 @@ import type { ForecastData } from '@/data/mockData';
 
 interface ForecastChartProps {
   data: ForecastData[];
-  selectedGarita: string;
+  selectedCrossingId: string;
 }
 
 export default function ForecastChart({
   data,
-  selectedGarita,
+  selectedCrossingId,
 }: ForecastChartProps) {
-  const filteredData = data.filter((d) => d.garita === selectedGarita);
+  const filteredData = data.filter((d) => d.id === selectedCrossingId);
 
-  const maxWaitTime = Math.max(
-    ...filteredData.flatMap((d) => d.periods.map((p) => p.avgWaitTime))
+  const selectedDisplayName =
+    filteredData[0]?.displayName ?? 'este cruce';
+
+  if (!filteredData.length) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>Sin datos de pronóstico</Text>
+        <Text style={styles.emptyText}>
+          No hay información disponible para {selectedDisplayName} en este momento.
+        </Text>
+      </View>
+    );
+  }
+
+  const allWaitTimes = filteredData.flatMap((d) =>
+    d.periods.map((p) => p.avgWaitTime)
   );
+
+  const maxWaitTime = Math.max(...allWaitTimes, 1);
 
   return (
     <View style={styles.container}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.chartWrapper}>
           {filteredData.map((dayData, dayIndex) => (
-            <View key={dayIndex} style={styles.daySection}>
+            <View key={`${dayData.id}-${dayData.dayLabel}-${dayIndex}`} style={styles.daySection}>
               <Text style={styles.dayLabel}>{dayData.dayLabel}</Text>
               <View style={styles.barsContainer}>
                 {dayData.periods.map((period, index) => {
                   const barHeight = (period.avgWaitTime / maxWaitTime) * 120;
+
                   return (
-                    <View key={index} style={styles.barWrapper}>
+                    <View key={`${period.label}-${index}`} style={styles.barWrapper}>
                       <View style={styles.barContainer}>
-                        <Text style={styles.timeValue}>{period.avgWaitTime}m</Text>
+                        <Text style={styles.timeValue}>
+                          {period.avgWaitTime}m
+                        </Text>
                         <View
                           style={[
                             styles.bar,
@@ -39,8 +58,8 @@ export default function ForecastChart({
                                 period.avgWaitTime < 30
                                   ? '#10b981'
                                   : period.avgWaitTime < 45
-                                    ? '#f59e0b'
-                                    : '#ef4444',
+                                  ? '#f59e0b'
+                                  : '#ef4444',
                             },
                           ]}
                         />
@@ -113,5 +132,24 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     width: 50,
+  },
+  emptyContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
