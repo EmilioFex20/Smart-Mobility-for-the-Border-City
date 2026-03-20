@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Hop as Home, Users } from 'lucide-react-native';
+import { Menu, Users } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -25,7 +25,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => <Menu size={size} color={color} />,
         }}
       />
       <Tabs.Screen
