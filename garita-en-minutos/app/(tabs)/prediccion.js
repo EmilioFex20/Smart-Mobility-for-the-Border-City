@@ -27,6 +27,11 @@ const CROSSINGS = [
     label: 'Mexicali Centro - Caminando',
     apiUrl: 'https://Orbit05-fila.hf.space/garita-vieja-caminando/predict',
   },
+  {
+    id: 'nueva-caminando',
+    label: 'Mexicali Nueva - Caminando',
+    apiUrl: 'https://Orbit05-fila.hf.space/garita-nueva-caminando/predict',
+  },
 ];
 
 const DAY_NAMES_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];

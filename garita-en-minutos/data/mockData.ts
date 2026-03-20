@@ -81,6 +81,13 @@ const CROSSINGS: CrossingConfig[] = [
     displayName: 'Mexicali Centro - Caminando',
     apiUrl: 'https://Orbit05-fila.hf.space/garita-vieja-caminando/predict',
   },
+  {
+    id: 'nueva-caminando',
+    garita: 'Mexicali Nueva',
+    crossingType: 'caminando',
+    displayName: 'Mexicali Nueva - Caminando',
+    apiUrl: 'https://Orbit05-fila.hf.space/garita-nueva-caminando/predict',
+  },
 ];
 
 function getStatus(waitTime: number): WaitStatus {
@@ -367,6 +374,15 @@ const fallbackData: BorderData = {
       garita: 'Mexicali Centro',
       crossingType: 'caminando',
       displayName: 'Mexicali Centro - Caminando',
+      waitTime: 18,
+      status: 'rápido',
+      lastUpdated: 'Hace 5 min',
+    },
+    {
+      id: 'nueva-caminando',
+      garita: 'Mexicali Nueva',
+      crossingType: 'caminando',
+      displayName: 'Mexicali Nueva - Caminando',
       waitTime: 18,
       status: 'rápido',
       lastUpdated: 'Hace 5 min',
